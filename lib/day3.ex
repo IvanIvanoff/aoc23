@@ -1,10 +1,9 @@
 defmodule Day3 do
   def get_input(), do: File.read!("./lib/inputs/day3")
-  def split_lines(input), do: input |> String.split("\n", trim: true) |> Enum.reject(&(&1 == ""))
 
   # Part A
   def run_a(input \\ get_input()) do
-    numbered_lines = input |> split_lines() |> Enum.with_index()
+    numbered_lines = input |> Utils.split_lines() |> Enum.with_index()
     map_series = parse(numbered_lines)
 
     find_numbers(numbered_lines, map_series)
@@ -15,7 +14,7 @@ defmodule Day3 do
   # Part B
 
   def run_b(input \\ get_input()) do
-    numbered_lines = input |> split_lines() |> Enum.with_index()
+    numbered_lines = input |> Utils.split_lines() |> Enum.with_index()
     map_series = parse(numbered_lines)
     numbers = find_numbers(numbered_lines, map_series)
     find_gears_sum_value(map_series, numbers)
