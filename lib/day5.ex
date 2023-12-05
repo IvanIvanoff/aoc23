@@ -28,15 +28,38 @@ defmodule Day5 do
 
   def find_min_location_with_seed(map, seeds) do
     keys_chain = keys_chain(map, "seed") |> Enum.reverse()
-    do_find_min_location_with_seed(map, seeds, keys_chain, 0)
+
+    IO.puts("[#{DateTime.utc_now()}] Start the search... ")
+    Process.register(self(), :receiver)
+
+    # Search for the min location in parallel
+    max_concurrency = 8
+
+    for i <- 1..max_concurrency do
+      spawn(fn ->
+        do_find_min_location_with_seed(map, seeds, keys_chain, i - 1, max_concurrency)
+      end)
+    end
+
+    receive_res(max_concurrency, [])
   end
 
-  def do_find_min_location_with_seed(map, seeds, keys_chain, location) do
+  def receive_res(0, list), do: Enum.min_by(list, &elem(&1, 1))
+
+  def receive_res(left_unreceived, list) do
+    receive do
+      {seed, location} ->
+        IO.puts("[#{DateTime.utc_now()}] Received location #{location} for seed #{seed}")
+        receive_res(left_unreceived - 1, [{seed, location} | list])
+    end
+  end
+
+  def do_find_min_location_with_seed(map, seeds, keys_chain, location, incr) do
     seed = location_to_seed(map, keys_chain, location)
 
     if Enum.any?(seeds, fn range -> seed in range end),
-      do: {seed, location},
-      else: do_find_min_location_with_seed(map, seeds, keys_chain, location + 1)
+      do: send(:receiver, {seed, location}),
+      else: do_find_min_location_with_seed(map, seeds, keys_chain, location + incr, incr)
   end
 
   def seeds_ranges_to_values(seeds) do
