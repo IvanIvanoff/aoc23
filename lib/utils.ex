@@ -5,7 +5,7 @@ defmodule Utils do
     |> Enum.reject(&(&1 == ""))
   end
 
-  def find_all(_bin, _regex) do
-    # TODO
+  def consecutive_diff(list) do
+    Enum.chunk_every(list, 2, 1, :discard) |> Enum.map(fn [x, y] -> y - x end)
   end
 end
