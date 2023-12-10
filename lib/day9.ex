@@ -3,13 +3,9 @@ defmodule Day9 do
   import Enum, only: [map: 2, any?: 2, sum: 1]
   import String, only: [split: 3, to_integer: 1]
 
-  def get_input(), do: File.read!("./lib/inputs/day9")
-
-  def run_a(input \\ get_input()),
-    do: input |> split_lines() |> parse() |> map(&predict_forward/1) |> sum()
-
-  def run_b(input \\ get_input()),
-    do: input |> split_lines() |> parse() |> map(&predict_backward/1) |> sum()
+  def get_input(), do: File.read!("./lib/inputs/day9") |> split_lines() |> parse()
+  def run_a(), do: get_input() |> map(&predict_forward/1) |> sum()
+  def run_b(), do: get_input() |> map(&predict_backward/1) |> sum()
 
   defp parse(lines), do: map(lines, fn l -> split(l, " ", trim: true) |> map(&to_integer/1) end)
 
