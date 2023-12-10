@@ -13,8 +13,7 @@ defmodule Day10 do
   end
 
   defp parse(lines) do
-    {_row, _col} =
-      start =
+    start =
       Enum.with_index(lines)
       |> Enum.find(fn {l, _} -> Enum.any?(l, &(&1 == "S")) end)
       |> case do
@@ -27,56 +26,48 @@ defmodule Day10 do
   end
 
   defp find_farthest_position(%{start_position: s} = table) do
-    do_find(
-      table,
-      {s, find_next(table, nil, s, :left)},
-      {s, find_next(table, nil, s, :right)},
-      0
-    )
+    do_find(table, {94, 98}, find_next(table, nil, s), 0)
   end
 
-  defp do_find(table, {prev_l, l}, {prev_r, r}, len, r_len) do
-    if len > 8000, do: raise("Too much")
-
-    if l == r do
-      len + 1
+  defp do_find(table, prev, {x, y} = curr, len) do
+    if table[x][y] == "S" do
+      div(len + 1, 2)
     else
       do_find(
         table,
-        {l, find_next(table, prev_l, l)},
-        {r, find_next(table, prev_r, r)},
+        curr,
+        find_next(table, prev, curr),
         len + 1
       )
     end
   end
 
-  defp find_next(table, prev, {x, y}, direction \\ nil) do
-    pos =
-      for {r, c} <- [{x, y - 1}, {x, y + 1}, {x - 1, y}, {x + 1, y}],
-          {r, c} != prev,
-          r in 0..table.max_row,
-          c in 0..table.max_col,
-          table[r][c] in ~w(S J L 7 F | -),
-          pipe_allowed?(table, {x, y}, {r, c}),
-          do: {r, c}
-
-    cond do
-      direction == nil -> Enum.at(pos, 0)
-      direction == :left -> Enum.at(pos, 0)
-      direction == :right -> Enum.at(pos, 1)
+  def find_next(table, prev, {x, y}) do
+    case connected(table, prev, {x, y}) do
+      [next | _] -> next
+      [] -> raise("Err, no next for #{inspect({x, y})}})}")
     end
   end
 
+  defp connected(table, prev, {x, y}) do
+    for {r, c} <- [{x, y - 1}, {x - 1, y}, {x, y + 1}, {x + 1, y}],
+        {r, c} != prev,
+        r in 0..table.max_row,
+        c in 0..table.max_col,
+        table[r][c] != ".",
+        pipe_allowed?(table, {x, y}, {r, c}),
+        do: {r, c}
+  end
+
   defp pipe_allowed?(table, {x1, y1}, {x2, y2}) do
-    from = table[x1][y1]
-    to = table[x2][y2]
+    f = table[x1][y1]
+    t = table[x2][y2]
 
     cond do
-      from == "S" or to == "S" -> true
-      y1 > y2 and from in ~w(- J 7) -> to in ~w(- F L)
-      y1 < y2 and from in ~w(- F L) -> to in ~w(- J 7)
-      x1 > x2 and from in ~w(| J L) -> to in ~w(| F 7)
-      x1 < x2 and from in ~w(| F 7) -> to in ~w(| J L)
+      y1 > y2 and (f in ~w(S - J 7) and t in ~w(S - F L)) -> true
+      y1 < y2 and (f in ~w(S - F L) and t in ~w(S - J 7)) -> true
+      x1 > x2 and (f in ~w(S | J L) and t in ~w(S | F 7)) -> true
+      x1 < x2 and (f in ~w(S | F 7) and t in ~w(S | J L)) -> true
       true -> false
     end
   end
