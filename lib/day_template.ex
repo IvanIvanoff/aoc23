@@ -1,16 +1,13 @@
 defmodule DayX do
-  def get_input(), do: File.read!("./lib/inputs/dayX")
+  def get_input(), do: File.read!("./lib/inputs/dayX") |> Utils.split_lines()
 
   # Part A
-  def run_a(input \\ get_input()) do
-    input
-    |> Utils.split_lines()
+  def run_a() do
+    get_input()
   end
 
   # Part B
-
-  def run_b(input \\ get_input()) do
-    input
-    |> Utils.split_lines()
+  def run_b() do
+    get_input()
   end
 end
