@@ -1,15 +1,7 @@
 defmodule Day13 do
   def get_input(), do: File.read!("./lib/inputs/day13") |> parse()
-
-  # Part A
-  def run_a() do
-    count_mirrors(get_input(), :part_a)
-  end
-
-  # Part B
-  def run_b() do
-    count_mirrors(get_input(), :part_b)
-  end
+  def run_a(), do: count_mirrors(get_input(), :part_a)
+  def run_b(), do: count_mirrors(get_input(), :part_b)
 
   defp count_mirrors(input, part) do
     for section <- input do
@@ -33,12 +25,7 @@ defmodule Day13 do
       section
       |> String.split("\n", trim: true)
       |> Enum.map(&String.split(&1, "", trim: true))
-      |> Enum.map(fn line ->
-        Enum.map(line, fn
-          "." -> 0
-          "#" -> 1
-        end)
-      end)
+      |> Enum.map(fn line -> Enum.map(line, &if(&1 == "#", do: 1, else: 0)) end)
       |> Nx.tensor()
     end)
   end
@@ -51,12 +38,8 @@ defmodule Day13 do
     below = tensor[i..(i + size - 1)] |> Nx.reverse(axes: [0])
 
     case part do
-      :part_a ->
-        above == below
-
-      :part_b ->
-        smudges = Nx.subtract(above, below) |> Nx.abs() |> Nx.sum()
-        Nx.to_number(smudges) == 1
+      :part_a -> above == below
+      :part_b -> Nx.subtract(above, below) |> Nx.abs() |> Nx.sum() |> Nx.to_number() == 1
     end
   end
 end
