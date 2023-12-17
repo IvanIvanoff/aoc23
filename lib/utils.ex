@@ -56,6 +56,17 @@ defmodule Utils do
     end
   end
 
+  def print_tensor(tensor) do
+    {x, _y} = Nx.shape(tensor)
+
+    for r <- 0..(x - 1) do
+      IO.write(Nx.to_list(tensor[r]))
+      IO.write("\n")
+    end
+
+    tensor
+  end
+
   def fast_table(lines), do: Table.new(lines)
 
   def split_lines(input) do

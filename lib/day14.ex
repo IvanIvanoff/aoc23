@@ -71,14 +71,4 @@ defmodule Day14 do
   end
 
   @rev_map Map.new(@map, fn {k, v} -> {v, k} end)
-  defp print(tensor) do
-    {x, y} = Nx.shape(tensor)
-
-    for r <- 0..(x - 1), c <- 0..(y - 1) do
-      IO.write(@rev_map[Nx.to_number(tensor[r][c])])
-      if c == y - 1, do: IO.write("\n")
-    end
-
-    tensor
-  end
 end
