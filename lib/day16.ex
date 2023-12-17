@@ -2,20 +2,38 @@ defmodule Day16 do
   def get_input(), do: File.read!("./lib/inputs/day16") |> Utils.split_lines() |> parse()
 
   def run_a() do
-    get_input() |> beam()
+    get_input() |> beam({0, 0, :left})
   end
 
   def run_b() do
-    get_input()
+    get_input() |> find_max_beams()
   end
 
-  defp beam(tensor) do
-    seen = trace_beam(tensor, {0, 0, :left}, [], MapSet.new())
-    print_path(tensor, seen)
+  defp find_max_beams(tensor) do
+    {r, c} = Nx.shape(tensor)
 
+    pairs =
+      for(x <- 0..(r - 1), do: [{x, 0, :left}, {x, c - 1, :right}]) ++
+        for y <- 0..(c - 1), do: [{0, y, :down}, {r - 1, y, :up}]
+
+    results =
+      List.flatten(pairs)
+      |> Task.async_stream(fn {x, y, dir} -> {{x, y}, beam(tensor, {x, y, dir})} end,
+        ordered: false,
+        max_concurrency: 8
+      )
+      |> Enum.map(fn {:ok, res} -> res end)
+
+    {_, max} = Enum.max_by(results, fn {_coord, v} -> v end)
+
+    max
+  end
+
+  defp beam(tensor, initial) do
+    seen = trace_beam(tensor, initial, [], MapSet.new())
     seen = seen |> MapSet.new(fn {x, y, _dir} -> {x, y} end)
 
-    seen |> MapSet.size()
+    MapSet.size(seen)
   end
 
   defp trace_beam(tensor, {x, y, dir}, stack, seen) do
