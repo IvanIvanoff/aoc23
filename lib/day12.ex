@@ -1,71 +1,73 @@
 defmodule Day12 do
-  import String, only: [split: 2, split: 3, to_integer: 1]
-  import Enum, only: [map: 2, into: 3, with_index: 1]
   def get_input(), do: File.read!("./lib/inputs/day12") |> Utils.split_lines() |> parse()
 
   def run_a() do
-    get_input()
-    |> Enum.map(fn map ->
-      count_combinations(
-        # position in the springs
-        0,
-        # position in the groups
-        0,
-        # streak of broken springs
-        0,
-        map.springs,
-        map.groups
-      )
-    end)
+    start_clean_ets()
 
-    # |> Enum.sum()
+    get_input()
+    |> Enum.map(&count(&1.springs, ".", &1.groups))
+    |> Enum.sum()
   end
 
   def run_b() do
+    start_clean_ets()
+
     get_input()
+    |> Enum.map(fn %{springs: springs, groups: groups} ->
+      %{
+        springs: List.duplicate(springs, 5) |> Enum.join("?"),
+        groups: List.duplicate(groups, 5) |> List.flatten()
+      }
+    end)
+    |> Enum.map(&count(&1.springs, ".", &1.groups))
+    |> Enum.sum()
   end
 
-  defp count_combinations(pos, group, _streak, springs, groups)
-       when pos == map_size(springs) do
-    if group < map_size(groups), do: 0, else: 1
+  defp start_clean_ets() do
+    if :undefined != :ets.whereis(:cache), do: :ets.delete(:cache)
+    :ets.new(:cache, [:set, :public, :named_table])
   end
 
-  defp count_combinations(pos, group, streak, springs, groups) do
-    IO.inspect({pos, group, streak})
+  defp count(springs, prev, groups) do
+    case {springs, prev, groups} do
+      {"", _, []} -> 1
+      {"", _, [0]} -> 1
+      {"", _, _} -> 0
+      {"#" <> _, _, []} -> 0
+      {"#" <> _, _, [0 | t]} -> 0
+      {"#" <> r, _, [h | t]} -> count(r, "#", [h - 1 | t])
+      {"." <> r, _, []} -> count(r, ".", [])
+      {"." <> r, "#", [0 | t]} -> count(r, ".", t)
+      {"." <> _, "#", [_ | _]} -> 0
+      {"." <> r, ".", groups} -> count(r, ".", groups)
+      {"?" <> r, "#", []} -> count(r, ".", [])
+      {"?" <> r, "#", [0 | t]} -> count(r, ".", t)
+      {"?" <> r, "#", [h | t]} -> count(r, "#", [h - 1 | t])
+      {"?" <> r, ".", []} -> count(r, ".", [])
+      {"?" <> r, ".", [0 | t]} -> count(r, ".", t)
+      {"?" <> r, ".", [h | t]} -> memoize(r, h, t)
+    end
+  end
 
-    cond do
-      streak == groups[group] ->
-        case springs[pos + 1] do
-          "." -> count_combinations(pos + 1, group + 1, 0, springs, groups)
-          "#" -> 0
-          "?" -> count_combinations(pos + 1, group + 1, 0, springs, groups) * 2
-        end
+  defp memoize(rest, h, t) do
+    # If called, the current symbol is ? and both # and . are valid options,
+    # so we need to check both and sum their results
+    case :ets.lookup(:cache, {rest, h, t}) do
+      [] ->
+        result = count(rest, "#", [h - 1 | t]) + count(rest, ".", [h | t])
+        :ets.insert(:cache, {{rest, h, t}, result})
+        result
 
-      streak < groups[group] ->
-        case springs[pos + 1] do
-          nil -> 0
-          "." -> 0
-          "#" -> count_combinations(pos + 1, group, streak + 1, springs, groups)
-          "?" -> count_combinations(pos + 1, group, streak + 1, springs, groups) * 2
-        end
+      [{_key, result}] ->
+        result
     end
   end
 
   defp parse(lines) do
     Enum.map(lines, fn line ->
-      [springs, groups] = split(line, " ")
+      [springs, groups] = String.split(line, " ")
 
-      groups =
-        split(groups, ",")
-        |> map(&to_integer/1)
-        |> with_index()
-        |> into(%{}, fn {group, index} -> {index, group} end)
-
-      # append `.` so we can have easier counting
-      springs =
-        (split(springs, "", trim: true) ++ ["."])
-        |> with_index()
-        |> into(%{}, fn {spring, index} -> {index, spring} end)
+      groups = String.split(groups, ",") |> Enum.map(&String.to_integer/1)
 
       %{springs: springs, groups: groups}
     end)
