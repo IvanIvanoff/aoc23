@@ -4,7 +4,7 @@ defmodule Day17 do
   def run_a() do
     tensor = get_input()
     graph = build_graph(tensor, 1, 3)
-    shortest_path = get_shortest_path(graph, tensor)
+    _shortest_path = get_shortest_path(graph, tensor)
   end
 
   def run_b() do
