@@ -70,5 +70,5 @@ defmodule Day14 do
     |> Nx.tensor()
   end
 
-  @rev_map Map.new(@map, fn {k, v} -> {v, k} end)
+  # @rev_map Map.new(@map, fn {k, v} -> {v, k} end)
 end
