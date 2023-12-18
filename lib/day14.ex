@@ -1,74 +1,115 @@
 defmodule Day14 do
-  def get_input(), do: File.read!("./lib/inputs/day14") |> Utils.split_lines() |> parse()
+  def get_input(),
+    do: File.read!("./lib/inputs/day14") |> Utils.split_lines_twice() |> parse()
 
-  # |> print()
-  def run_a(), do: get_input() |> tilt_west()
+  def run_a(), do: get_input() |> tilt(:north) |> compute_weight(:north)
 
-  def run_b(), do: get_input()
+  def run_b() do
+    table = get_input()
+    dirs = [:north, :west, :south, :east]
+
+    Enum.reduce_while(1..1_000_000_000, {table, %{}, %{}}, fn i, {c, seen, weights} ->
+      next = Enum.reduce(dirs, c, fn dir, curr_acc -> tilt(curr_acc, dir) end)
+      weight = compute_weight(next, :north)
+
+      if start_cycle = Map.get(seen, next) do
+        idx_in_cycle = rem(1_000_000_000 - start_cycle, i - start_cycle)
+
+        {:halt, Map.get(weights, start_cycle + idx_in_cycle)}
+      else
+        {:cont, {next, Map.put(seen, next, i), Map.put(weights, i, weight)}}
+      end
+    end)
+  end
+
+  def tilt(table, tilt_direction) do
+    points = get_points(table, tilt_direction)
+
+    Enum.reduce(points, table, fn curr, acc ->
+      case acc[curr] do
+        "#" ->
+          acc
+
+        "O" ->
+          acc
+
+        "." ->
+          if p = find_rolling_stone(acc, curr, tilt_direction),
+            do: Map.merge(acc, %{curr => "O", p => "."}),
+            else: acc
+      end
+    end)
+  end
+
+  defp get_points(table, tilt_direciton) do
+    {x_gen, y_gen} =
+      case tilt_direciton do
+        :north -> {0..table.max_row, 0..table.max_col}
+        :east -> {0..table.max_row, table.max_col..0}
+        :south -> {table.max_row..0, 0..table.max_col}
+        :west -> {table.max_row..0, 0..table.max_col}
+      end
+
+    for x <- x_gen, y <- y_gen, do: {x, y}
+  end
+
+  def compute_weight(table, tild_direction) do
+    for r <- 0..table.max_row, c <- 0..table.max_col, table[{r, c}] == "O" do
+      case tild_direction do
+        :north -> table.max_row + 1 - r
+        :south -> r + 1
+        :east -> table.max_col + 1 - c
+        :west -> c + 1
+      end
+    end
+    |> Enum.sum()
+  end
+
+  defp check_point(table, point) do
+    case table[point] do
+      "#" -> {:halt, nil}
+      "O" -> {:halt, point}
+      "." -> {:cont, nil}
+    end
+  end
+
+  defp find_rolling_stone(table, {r, c}, :north) do
+    Enum.reduce_while(r..table.max_row, nil, fn x, _ -> check_point(table, {x, c}) end)
+  end
+
+  defp find_rolling_stone(table, {r, c}, :south) do
+    Enum.reduce_while(r..0, nil, fn x, _ -> check_point(table, {x, c}) end)
+  end
+
+  defp find_rolling_stone(table, {r, c}, :east) do
+    Enum.reduce_while(c..0, nil, fn y, _ -> check_point(table, {r, y}) end)
+  end
+
+  defp find_rolling_stone(table, {r, c}, :west) do
+    Enum.reduce_while(c..table.max_col, nil, fn y, _ -> check_point(table, {r, y}) end)
+  end
 
   defp parse(lines) do
     lines
-    |> Enum.map(fn line ->
+    |> Enum.with_index()
+    |> Enum.reduce(%{}, fn {line, line_number}, acc ->
       line
-      |> String.split("", trim: true)
-      |> Enum.map(&to_num/1)
+      |> Enum.with_index()
+      |> Enum.reduce(acc, fn {v, idx}, acc -> Map.put(acc, {line_number, idx}, v) end)
     end)
-    |> Nx.tensor()
+    |> Map.put(:max_row, length(lines) - 1)
+    |> Map.put(:max_col, length(hd(lines)) - 1)
   end
 
-  defp tilt_west(tensor) do
-    tensor = Nx.transpose(tensor)
+  def print(table) do
+    for r <- 0..table.max_row do
+      for c <- 0..table.max_col do
+        IO.write(table[{r, c}])
+      end
 
-    {height, width} = Nx.shape(tensor)
-    rolling_stones = count_rolling_stones(tensor) |> IO.inspect()
+      IO.write("\n")
+    end
 
-    Enum.map(0..(height - 1), fn r ->
-      Enum.reduce(0..(width - 1), {[], 0, 0}, fn c, {acc, s} ->
-        cond do
-          # non-sliding rocks are not affected
-          tensor[r][c] == Nx.tensor(2) ->
-            {[2 | acc], 0}
-
-          # no sliding stones to the left
-          rolling_stones[r][c] == Nx.tensor(0) ->
-            {[0 | acc], s + 1}
-
-          rolling_stones[r][c] >= Nx.tensor(s) ->
-            {[1 | acc], s + 1}
-
-          rolling_stones[r][c] < Nx.tensor(s) ->
-            {[0 | acc], s + 1}
-        end
-      end)
-      |> elem(0)
-      |> Enum.reverse()
-    end)
-    |> Nx.tensor()
-    |> Nx.transpose()
+    table
   end
-
-  @map %{"#" => 2, "O" => 1, "." => 0}
-  defp to_num(c), do: @map[c]
-
-  def count_rolling_stones(tensor) do
-    # for each position in the tensor, count the number of rolling stones
-    # to the right of it, until the edge or until a
-    # non-rolling stone is encountered
-    h_flip_tensor = Nx.reverse(tensor, axes: [1])
-    {rows, cols} = Nx.shape(h_flip_tensor)
-
-    Enum.map(0..(rows - 1), fn r ->
-      Enum.reduce(0..(cols - 1), {[], 0}, fn c, {list, prev} ->
-        case h_flip_tensor[r][c] |> Nx.to_number() do
-          2 -> {[0 | list], 0}
-          1 -> {[prev + 1 | list], prev + 1}
-          0 -> {[prev | list], prev}
-        end
-      end)
-      |> elem(0)
-    end)
-    |> Nx.tensor()
-  end
-
-  # @rev_map Map.new(@map, fn {k, v} -> {v, k} end)
 end
