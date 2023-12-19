@@ -25,7 +25,7 @@ defmodule Day18 do
 
   defp get_vertices(instructions, :part_1) do
     [{0, 0}] ++
-      Enum.reduce(instructions, [{0, 0}], fn {dir, steps, color}, [curr | _] = acc ->
+      Enum.reduce(instructions, [{0, 0}], fn {dir, steps, _color}, [curr | _] = acc ->
         [move(curr, dir, steps) | acc]
       end)
   end
